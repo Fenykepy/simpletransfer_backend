@@ -1,0 +1,31 @@
+
+############################################
+#                                          #
+#         Do not modifie this file.        #
+#        make a copy of it as .env:        #
+#           $ cp env-example .env          #
+#                                          #
+############################################
+
+
+## App configuration
+
+# Node environment, default: development
+# set to: production for production
+NODE_ENV=development
+# Port application will listen at
+# (can also be a path to a socket file)
+PORT=4000
+# Transfer directory (where archives to be transfered are stored).
+# Must be a full path to the directory and directory must exists (it won't be created).
+# (without trailing '/')
+TRANSFER_DIRECTORY='/var/www/simpletransfer_backend/transfers'
+# Dropbox directory (where user drops files to be transfered).
+# Must be a full path to the directory and directory must exists (it won't be created).
+# (without trailing '/')
+DROPBOX_DIRECTORY='/var/www/simpletransfer_backend/dropbox'
+
+
+
+
+
