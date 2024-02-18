@@ -19,7 +19,6 @@ function resetSocket(sock) {
   } catch (e) {
     console.log('failed to reset socket.')
     throw e
-    return
   }
 }
 
