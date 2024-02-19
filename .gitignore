@@ -2,6 +2,12 @@
 transfers/*
 dropbox/*
 
+#Database
+simpleTransfer.sqlite
+
+
+#npm modules
+node_modules
 
 #yarn files
 .yarn/*

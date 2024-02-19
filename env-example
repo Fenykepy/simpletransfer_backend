@@ -24,7 +24,8 @@ TRANSFER_DIRECTORY='/var/www/simpletransfer_backend/transfers'
 # Must be a full path to the directory and directory must exists (it won't be created).
 # (without trailing '/')
 DROPBOX_DIRECTORY='/var/www/simpletransfer_backend/dropbox'
-
+# sqlite data base file (full path, file will be created).
+DB_FILE='/var/www/simpletransfer_backend/simpleTransfer.sqlite'
 
 
 
