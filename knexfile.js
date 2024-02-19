@@ -10,16 +10,46 @@ const {
 } = process.env
 
 module.exports = {
-  client: 'sqlite3',
-  connection: {
-    filename: DB_FILE,
+  development: {
+    client: 'sqlite3',
+    connection: {
+      filename: DB_FILE,
+    },
+    useNullAsDefault: true, // necessary for sqlite
+    migrations: {
+      directory: path.join(BASE_PATH, 'migrations'),
+    },
+    seeds: {
+      directory: path.join(BASE_PATH, 'seeds'),
+    },
+    debug: NODE_ENV !== 'production'
   },
-  useNullAsDefault: true, // necessary for sqlite
-  migrations: {
-    directory: path.join(BASE_PATH, 'migrations'),
+  production: {
+    client: 'sqlite3',
+    connection: {
+      filename: DB_FILE,
+    },
+    useNullAsDefault: true, // necessary for sqlite
+    migrations: {
+      directory: path.join(BASE_PATH, 'migrations'),
+    },
+    seeds: {
+      directory: path.join(BASE_PATH, 'seeds'),
+    },
+    debug: NODE_ENV !== 'production'
   },
-  seeds: {
-    directory: path.join(BASE_PATH, 'seeds'),
+  test: {
+    client: 'sqlite3',
+    connection: {
+      filename: ":memory:",
+    },
+    useNullAsDefault: true, // necessary for sqlite
+    migrations: {
+      directory: path.join(BASE_PATH, 'migrations'),
+    },
+    seeds: {
+      directory: path.join(BASE_PATH, 'seeds'),
+    },
+    debug: NODE_ENV !== 'production'
   },
-  debug: NODE_ENV !== 'production'
 }

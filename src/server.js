@@ -8,10 +8,10 @@ const app = new Koa()
 
 app.use(koaBody())
 
-// Require transfers routes
-let transfers = require('./transfers')
+// routes
+let routes = require('./routes')
 
 // Use the routes
-app.use(transfers.routes())
+app.use(routes.routes())
 
 module.exports = app
