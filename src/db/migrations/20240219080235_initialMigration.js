@@ -17,9 +17,10 @@ exports.up = async function(knex) {
     // Transfer sender email
     table.string('email')
     // Transfer archive file name
-    table.string('archive_file_name')
-    table.string('title')
-    table.string('description')
+    table.string('archive_filename')
+    table.string('original_filename')
+    table.string('object')
+    table.string('message')
     table.boolean('complete').defaultTo(false) // true when all recipients have downloaded
     table.boolean('active').defaultTo(true) // false is recipient is no more allowed to download
     table.unique('uuid')
@@ -37,8 +38,6 @@ exports.up = async function(knex) {
     table.timestamp('created_at').defaultTo(knex.fn.now())
     // Recipient last update date (manual)
     table.timestamp('updated_at')
-    // Recipient name
-    table.string('name') 
     // Recipient mail
     table.string('email')
     // Recipient transfer
