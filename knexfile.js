@@ -50,6 +50,6 @@ module.exports = {
     seeds: {
       directory: path.join(BASE_PATH, 'seeds'),
     },
-    debug: NODE_ENV !== 'production'
+    debug: false
   },
 }
