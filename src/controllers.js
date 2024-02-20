@@ -91,6 +91,15 @@ async function getTransferDetail(ctx) {
 async function updateTransfer(ctx) {
   // We can't update object and message because they were already sent by email to recipients
   // We can update email and active status
+
+  // Check if transfer exists
+  const transfer = await db.getTransferByUUID(ctx.params.uuid, 'pk')
+  if (!transfer) {
+    ctx.response.status = 404
+    ctx.body = { error: 'The transfer you want to update could not be retrieved.' }
+    return
+  }
+
   let errors = []
   let fieldsToUpdate = {}
   if (!val.isNullOrUndefined(ctx.request.body.email)) {
@@ -115,12 +124,7 @@ async function updateTransfer(ctx) {
   }
 
   const transfers = await db.updateTransfer(ctx.params.uuid, fieldsToUpdate)
-  if (transfers) {
-    ctx.body = transfers[0]
-  } else {
-    ctx.response.status = 404
-    ctx.body = { error: 'The transfer you want to update could not be retrieved.' }
-  }
+  ctx.body = transfers[0]
 } 
 
 
@@ -129,14 +133,32 @@ async function updateTransfer(ctx) {
 async function deleteTransfer(ctx) {
   // We should always prefer deactivating a transfer rather than deleting it
   // this way user doesn't see a 404 on transfer's page but a "Deactivated transfer".
-  const transfers = await db.deleteTransfer(ctx.params.uuid)
-  if (transfer) {
-    // TODO delete archive file
-    ctx.body = transfers[0]
-  } else {
+
+  // Check if transfer exists
+  const transfer = await db.getTransferByUUID(ctx.params.uuid, '*')
+  if (!transfer) {
     ctx.response.status = 404
     ctx.body = { error: 'The transfer you want to delete could not be retrieved.' }
+    return
   }
+
+  // Delete archive file
+  let zipPath = path.join(APP_CONFIG.transfersDirectory, transfer.archive_filename)
+  let fileExists
+  try {
+    await fs.stat(zipPath)
+    fileExists = true
+  } catch {
+    fileExists = false
+  }
+  if (fileExists) {
+    await fs.rm(zipPath)
+  }
+
+  // Returning doesn't work with sqlite3 and delete method
+  await db.deleteTransfer(ctx.params.uuid)
+  
+  ctx.body = transfer
 }
 
 

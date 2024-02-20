@@ -1,5 +1,22 @@
 const db = require('./connection')
 
+function addFieldToSelection(field, selection) {
+  if (selection = '*') { return selection } // all fields already included, nothing to do
+  if (Array.isArray(selection)) { // We got an array on fields
+    if (selection.contains(field)) { // field already included, nothing to do
+      return selection
+    } else { // return new array with field included
+      let newFields = selection.slice()
+      newFields.push(field)
+      return newFields
+    }
+  }
+  // if we are here, selection is a string (only field)
+  if (selection === field) { return selection } // selection is field, nothing to do
+  return [field, selection] // return an array with field added
+}
+
+
 module.exports = {
   /* Return all transfers (paginated with pk as cursor) */
   getAllTransfers(limit, cursor, fields = '*', before = false) {
@@ -16,13 +33,28 @@ module.exports = {
     return query
   },
 
-  /* Return a specific tranfer with associated recipients */
-  getTransferDetail(transferUUID, fields = '*') { // fields must be prefixed with table name
+  /* Return a specific transfer without recipients */
+  getTransferByUUID(transferUUID, fields = '*') {
     return db('transfers')
-      .where({ 'transfer.uuid': transferUUID })
+      .where({ uuid: transferUUID })
       .first()
-      .innerJoin('recipients', 'recipients.transfer', 'transfers.pk')
       .select(fields)
+  },
+
+  /* Return a specific tranfer with associated recipients */
+  async getTransferDetail(transferUUID, transferFields = '*', recipientFields = '*') {
+    const fields = addFieldToSelection('pk', transferFields)
+    const transfer = await db('transfers')
+      .where({ uuid: transferUUID })
+      .first()
+      .select(fields)
+    const recipients = await db('recipients')
+      .where({ transfer: transfer.pk })
+      .select(recipientFields)
+      .orderBy('email', 'asc')
+    transfer.recipients = recipients
+
+    return transfer
   },
 
 
@@ -51,7 +83,7 @@ module.exports = {
     return db('transfers')
       .where({ uuid: transferUUID })
       .del()
-      .returning('*')
+      .returning('*') // doesn't seem to work with better-sqlite3, however it works in update method.
   },
 
 

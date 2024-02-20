@@ -25,7 +25,7 @@ async function deleteTestFiles() {
   for (const transfer of transfers) {
     // Delete transfer file if any
     try {
-      fs.rm(path.join(APP_CONFIG.transfersDirectory, transfer.archive_filename))
+      await fs.rm(path.join(APP_CONFIG.transfersDirectory, transfer.archive_filename))
     } catch (error) {
       console.log(error)
     }
@@ -222,6 +222,7 @@ describe("Test creating transfer", () => {
     expect(res.body.message).toBe('Transfer message')
     expect(res.body.complete).toBe(0)
     expect(res.body.active).toBe(1)
+    expect(res.body.archive_size).toBeDefined()
     
     const stats = await fs.stat(path.join(APP_CONFIG.transfersDirectory, res.body.archive_filename))
     expect(stats.isFile()).toBe(true)
@@ -315,6 +316,14 @@ describe("Test updating a transfer", () => {
     expect(res.body.active).toBe(0)
   })
 
+  test("updating transfer with invalid uuid should fail", async () => {
+    let transferUUID = uuidv4()
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ email: 'test@example.com' })
+    expect(res.statusCode).toBe(404)
+    expect(res.body.error).toBe('The transfer you want to update could not be retrieved.')
+  })
+
   test("updating transfer with valid email should succeed", async () => {
     let transfers = await db.getAllTransfers(1)
     let transferUUID = transfers[0].uuid
@@ -326,3 +335,61 @@ describe("Test updating a transfer", () => {
     expect(res.body.email).toBe('test@example.com')
   })
 })
+
+
+const testArchiveName = 'testArchive.zip'
+const testArchivePath = path.join(APP_CONFIG.transfersDirectory, testArchiveName)
+describe("Test deleting a transfer", () => {
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(1)
+    await fs.writeFile(testArchivePath, 'Test content!')
+  })
+
+  afterAll(async () => {
+    await resetDb()
+    try {
+      await fs.rm(testArchivePath)
+    } catch (error) {
+      //console.log(error)
+    }
+  })
+
+  test("deleting a transfer without authentication should fail", async () => {
+  })
+
+  test("deleting a transfer with invalid uuid should fail", async () => {
+    let transferUUID = uuidv4()
+    let res = await request.delete(`/api/transfers/${transferUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.error).toBe('The transfer you want to delete could not be retrieved.')
+  })
+
+  test("deleting a transfer with valid uuid should succeed", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+
+    // We update transfer with testArchive to ensure it deletes the archive
+    await db.updateTransfer(transferUUID, { archive_filename: testArchiveName })
+
+    let res = await request.delete(`/api/transfers/${transferUUID}`)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+
+    // transfer mustn't be anymore in db 
+    let transfer = await db.getTransferByUUID(transferUUID)
+    expect(transfer).toBe(undefined)
+
+    // archive file must have been deleted
+    let fileExists
+    try {
+      await fs.stat(testArchivePath)
+      fileExists = true
+    } catch {
+      fileExists = false
+    }
+    expect(fileExists).toBe(false)
+  })
+})
+
+
