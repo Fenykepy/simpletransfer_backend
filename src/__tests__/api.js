@@ -5,6 +5,7 @@ const db = require('../db')
 const { APP_CONFIG } = require('../../transferConfig')
 const path = require('path')
 const fs = require('node:fs/promises')
+const { v4: uuidv4 } = require('uuid')
 
 const request = supertest(app.callback())
 
@@ -31,6 +32,19 @@ async function deleteTestFiles() {
   }
   await fs.rm(testFilePath)
   await fs.rmdir(testDirPath)
+}
+
+async function createTestTransfers(n) {
+  // Create fake transfers
+  for (let i = 1; i <= n; i++) {
+    await db.createTransfer({
+      email: `test${i}@example.com`,
+      object: `Test ${i}`,
+      message: `Test ${i} message.`,
+      original_filename: `filename${i}`,
+      archive_filename: `archive${i}`,
+    })
+  }
 }
 
 async function setDb() {
@@ -67,23 +81,14 @@ describe("Test retrieving transfers", () => {
   })
 
   test("retrieving transfers should return them ordered by date", async () => {
-    // Create fake transfers
-    for (let i = 0; i < 5; i++) {
-      await db.createTransfer({
-        email: `test${i}@example.com`,
-        object: `Test ${i}`,
-        message: `Test ${i} message.`,
-        original_filename: `filename${i}`,
-        archive_filename: `archive${i}`,
-      })
-    }
+    await createTestTransfers(5)
 
     let res = await request.get('/api/transfers')
     expect(res.body.errors).toBe(undefined)
     expect(res.statusCode).toBe(200)
     expect(res.body.length).toBe(5)
-    expect(res.body[0].object).toBe("Test 4")
-    expect(res.body[4].object).toBe("Test 0")
+    expect(res.body[0].object).toBe("Test 5")
+    expect(res.body[4].object).toBe("Test 1")
   })
 })
 
@@ -220,5 +225,104 @@ describe("Test creating transfer", () => {
     
     const stats = await fs.stat(path.join(APP_CONFIG.transfersDirectory, res.body.archive_filename))
     expect(stats.isFile()).toBe(true)
+  })
+})
+
+
+describe("Test updating a transfer", () => {
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(5)
+  })
+
+  afterAll(async () => {
+    await resetDb()
+  })
+
+  test("updating a transfer without authentication should fail", async () => {
+  })
+
+  test("updating transfer with unupdatable fields should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ 
+      pk: 3,
+      uuid: uuidv4(),
+      created_at: new Date(),
+      updated_at: new Date(),
+      archive_filename: "test",
+      original_filename: "test",
+      object: "test",
+      message: "test",
+      complete: true,
+    })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].misc).toBe('No valid field to update')
+  })
+
+  test("updating transfer with empty email and valid active should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ email: ' ', active: true })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].email).toBe('Invalid email')
+  })
+
+  test("updating transfer with invalid email and valid active should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ email: 'invalid@test.mail.@.net', active: true })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].email).toBe('Invalid email')
+  })
+
+  test("updating transfer with invalid active should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ active: "a string" })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(2)
+    expect(res.body.errors[0].active).toBe('Invalid boolean')
+    expect(res.body.errors[1].misc).toBe('No valid field to update')
+  })
+
+  test("updating transfer with invalid active should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ active: "a string" })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(2)
+    expect(res.body.errors[0].active).toBe('Invalid boolean')
+    expect(res.body.errors[1].misc).toBe('No valid field to update')
+  })
+
+  test("updating transfer with valid active should succeed", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ active: false })
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.body.uuid).toBeDefined()
+    expect(res.body.active).toBe(0)
+  })
+
+  test("updating transfer with valid email should succeed", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let transferUUID = transfers[0].uuid
+    let req = request.put(`/api/transfers/${transferUUID}`)
+    let res = await req.send({ email: 'test@example.com' })
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.body.uuid).toBeDefined()
+    expect(res.body.email).toBe('test@example.com')
   })
 })

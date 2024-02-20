@@ -39,7 +39,7 @@ module.exports = {
     return db('transfers')
       .where({ uuid: transferUUID })
       .update({
-        updated_a: db.fn.now(),
+        updated_at: db.fn.now(),
         ...fieldsToUpdate
       })
       .returning('*')

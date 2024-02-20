@@ -95,8 +95,12 @@ async function updateTransfer(ctx) {
       fieldsToUpdate.email = ctx.request.body.email.trim()
     }
   }
-  if (!val.isNullOrUndefined(ctx.request.body.active) && isBoolean(ctx.request.body.active)) {
-    fieldsToUpdate.active = ctx.request.body.active
+  if (!val.isNullOrUndefined(ctx.request.body.active)) {
+    if (!val.isBoolean(ctx.request.body.active)) {
+      errors.push({ active: "Invalid boolean"})
+    } else {
+      fieldsToUpdate.active = ctx.request.body.active
+    }
   }
   if (Object.keys(fieldsToUpdate).length == 0) { errors.push({ misc: "No valid field to update" }) } 
   if (errors.length > 0) {
@@ -106,7 +110,7 @@ async function updateTransfer(ctx) {
   }
 
   const transfers = await db.updateTransfer(ctx.params.uuid, fieldsToUpdate)
-  if (transfer) {
+  if (transfers) {
     ctx.body = transfers[0]
   } else {
     ctx.response.status = 404
