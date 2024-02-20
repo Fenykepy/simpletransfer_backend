@@ -6,6 +6,7 @@ const { v4: uuidv4 } = require('uuid')
 const { APP_CONFIG } = require('../transferConfig')
 const db = require('./db')
 const val = require('./utils/validate')
+const filesystem = require('./utils/filesystem')
 
 // List all transfers
 async function getAllTransfers(ctx) {
@@ -144,14 +145,7 @@ async function deleteTransfer(ctx) {
 
   // Delete archive file
   let zipPath = path.join(APP_CONFIG.transfersDirectory, transfer.archive_filename)
-  let fileExists
-  try {
-    await fs.stat(zipPath)
-    fileExists = true
-  } catch {
-    fileExists = false
-  }
-  if (fileExists) {
+  if (await filesystem.fileExists(zipPath)) {
     await fs.rm(zipPath)
   }
 

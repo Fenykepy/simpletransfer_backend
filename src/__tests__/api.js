@@ -2,6 +2,7 @@ const app = require('../server.js')
 const supertest = require('supertest')
 const knex = require('../db/connection')
 const db = require('../db')
+const filesystem = require('../utils/filesystem')
 const { APP_CONFIG } = require('../../transferConfig')
 const path = require('path')
 const fs = require('node:fs/promises')
@@ -381,14 +382,7 @@ describe("Test deleting a transfer", () => {
     expect(transfer).toBe(undefined)
 
     // archive file must have been deleted
-    let fileExists
-    try {
-      await fs.stat(testArchivePath)
-      fileExists = true
-    } catch {
-      fileExists = false
-    }
-    expect(fileExists).toBe(false)
+    expect(await filesystem.fileExists(testArchivePath)).toBe(false)
   })
 })
 
