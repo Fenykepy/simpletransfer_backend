@@ -11,7 +11,7 @@ const {
 
 module.exports = {
   development: {
-    client: 'sqlite3',
+    client: 'better-sqlite3',
     connection: {
       filename: DB_FILE,
     },
@@ -25,7 +25,7 @@ module.exports = {
     debug: NODE_ENV !== 'production'
   },
   production: {
-    client: 'sqlite3',
+    client: 'better-sqlite3',
     connection: {
       filename: DB_FILE,
     },
@@ -39,7 +39,7 @@ module.exports = {
     debug: NODE_ENV !== 'production'
   },
   test: {
-    client: 'sqlite3',
+    client: 'better-sqlite3',
     connection: {
       filename: ":memory:",
     },
@@ -50,6 +50,6 @@ module.exports = {
     seeds: {
       directory: path.join(BASE_PATH, 'seeds'),
     },
-    debug: false
+    debug: false,
   },
 }

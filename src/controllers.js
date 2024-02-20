@@ -1,5 +1,8 @@
+const fs = require('node:fs/promises')
+const path = require('path')
+
+const { APP_CONFIG } = require('../transferConfig')
 const db = require('./db')
-const { v4: uuidv4 } = require('uuid')
 const val = require('./utils/validate')
 
 // List all transfers
@@ -11,13 +14,22 @@ async function getAllTransfers(ctx) {
 async function createTransfer(ctx) {
   // {object: String, message: String, email: String, dropfile: String }
   let errors = []
-  if (!val.isNotEmptyString(ctx.body.object)) { errors.push({ object: "This field is required" }) }
-  if (!val.isNotEmptyString(ctx.body.message)) { errors.push({ message: "This field is required" }) }
-  if (!val.isNotEmptyString(ctx.body.dropfile)) { errors.push({ dropfile: "This field is required" }) }
-  if (!val.isValidEmail(ctx.body.email)) { errors.push({ email: "Invalid email" }) }
+  let dropfilePath
+  if (!val.isValidString(ctx.request.body.object)) { errors.push({ object: "This field is required" }) }
+  if (!val.isValidString(ctx.request.body.message)) { errors.push({ message: "This field is required" }) }
+  if (!val.isValidEmail(ctx.request.body.email)) { errors.push({ email: "Invalid email" }) }
+  if (!val.isValidString(ctx.request.body.dropfile)) { 
+    errors.push({ dropfile: "This field is required" })
+  } else { // we have a dropfile name, test if path exists
+    dropfilePath = path.join(APP_CONFIG.dropboxDirectory, ctx.request.body.dropfile.trim())
+    try {
+      const stats = await fs.stat(dropfilePath)
+    } catch (error) {
+      // File doesn't exists
+      errors.push({ dropfile: "Invalid dropfile" })
+    }
+  }
 
-  // TODO test if dropfile correspond to a real file or directory in the dropbox
-  
   if (errors.length > 0) {
     ctx.response.status = 422
     ctx.body = { errors: errors }
@@ -28,17 +40,16 @@ async function createTransfer(ctx) {
   // TODO zip dropfile and move it to transfers
 
   const transfer = {
-    uuid: uuidv4(),
-    email: ctx.body.email.trim(),
-    object: ctx.body.object.trim(),
-    message: ctx.body.message.trim(),
-    original_filename: ctx.body.dropfile.trim(),
+    email: ctx.request.body.email.trim(),
+    object: ctx.request.body.object.trim(),
+    message: ctx.request.body.message.trim(),
+    original_filename: ctx.request.body.dropfile.trim(),
     archive_filename: '',
   }
 
-  const newTransfer = await db.createTransfer(transfer)
+  const transfers = await db.createTransfer(transfer)
   ctx.response.status = 201
-  ctx.body = newTransfer
+  ctx.body = transfers[0]
 }
 
 
@@ -61,15 +72,15 @@ async function updateTransfer(ctx) {
   // We can update email and active status
   let errors = []
   let fieldsToUpdate = {}
-  if (!val.isNullOrUndefined(ctx.body.email)) {
-    if (!val.isValidEmail(ctx.body.email)) {
+  if (!val.isNullOrUndefined(ctx.request.body.email)) {
+    if (!val.isValidEmail(ctx.request.body.email)) {
       errors.push({ email: "Invalid email"})
     } else {
-      fieldsToUpdate.email = ctx.body.email.trim()
+      fieldsToUpdate.email = ctx.request.body.email.trim()
     }
   }
-  if (!val.isNullOrUndefined(ctx.body.active) && isBoolean(ctx.body.active)) {
-    fieldsToUpdate.active = ctx.body.active
+  if (!val.isNullOrUndefined(ctx.request.body.active) && isBoolean(ctx.request.body.active)) {
+    fieldsToUpdate.active = ctx.request.body.active
   }
   if (Object.keys(fieldsToUpdate).length == 0) { errors.push({ misc: "No valid field to update" }) } 
   if (errors.length > 0) {
@@ -78,9 +89,9 @@ async function updateTransfer(ctx) {
     return
   }
 
-  const transfer = await db.updateTransfer(ctx.params.uuid, fieldsToUpdate)
+  const transfers = await db.updateTransfer(ctx.params.uuid, fieldsToUpdate)
   if (transfer) {
-    ctx.body = transfer
+    ctx.body = transfers[0]
   } else {
     ctx.response.status = 404
     ctx.body = { error: 'The transfer you want to update could not be retrieved.' }
@@ -93,10 +104,10 @@ async function updateTransfer(ctx) {
 async function deleteTransfer(ctx) {
   // We should always prefer deactivating a transfer rather than deleting it
   // this way user doesn't see a 404 on transfer's page but a "Deactivated transfer".
-  const transfer = await db.deleteTransfer(ctx.params.uuid)
+  const transfers = await db.deleteTransfer(ctx.params.uuid)
   if (transfer) {
     // TODO delete archive file
-    ctx.body = transfer
+    ctx.body = transfers[0]
   } else {
     ctx.response.status = 404
     ctx.body = { error: 'The transfer you want to delete could not be retrieved.' }
@@ -109,10 +120,10 @@ async function deleteTransfer(ctx) {
 async function createRecipient(ctx) {
   //{ email: String, transfer: UUID, active: Bool}
   let errors = []
-  if (!val.isValidEmail(ctx.body.email)) { errors.push({ email: "Invalid email" }) }
-  const transfer = await db.getTransferDetail(ctx.body.transfer, 'pk')
+  if (!val.isValidEmail(ctx.request.body.email)) { errors.push({ email: "Invalid email" }) }
+  const transfer = await db.getTransferDetail(ctx.request.body.transfer, 'pk')
   if (!transfer) { errors.push({ transfer: "Invalid transfer" }) }
-  let active = isBoolean(ctx.body.active) ? ctx.body.active : true // default to true  
+  let active = isBoolean(ctx.request.body.active) ? ctx.request.body.active : true // default to true  
 
   if (errors.length > 0) {
     ctx.response.status = 
@@ -121,17 +132,16 @@ async function createRecipient(ctx) {
   }
 
   const recipient = {
-    uuid: uuidv4(),
-    email: ctx.body.email.trim(),
+    email: ctx.request.body.email.trim(),
     transfer: transfer.pk,
     active: active,
   }
 
   // TODO send mail
 
-  const newRecipient = await db.createRecipient(recipient)
+  const recipients = await db.createRecipient(recipient)
   ctx.response.status = 201
-  ctx.body = newTransfer
+  ctx.body = recipients[0]
 }
 
 
@@ -140,14 +150,14 @@ async function createRecipient(ctx) {
 async function updateRecipient(ctx) {
   // We can't change email because it was already send, so only updatable field is active
   let fields
-  if (!isBoolean(ctx.body.active)) {
+  if (!isBoolean(ctx.request.body.active)) {
     ctx.response.status = 422
     ctx.body = { errors: { active: "Invalid value" }}
     return
   }
-  const recipient = await db.updateRecipient(ctx.params.uuid, { active: ctx.body.active })
+  const recipients = await db.updateRecipient(ctx.params.uuid, { active: ctx.request.body.active })
   if (recipient) {
-    ctx.body = recipient
+    ctx.body = recipient[0]
   } else {
     ctx.response.status = 404
     ctx.body = { error: 'The recipient you want to update could not be retrieved.' }

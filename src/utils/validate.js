@@ -1,4 +1,4 @@
-function isNotEmptyString(str) {
+function isValidString(str) {
   if (!str || str.trim().length === 0) {
     return false
   }
@@ -7,7 +7,7 @@ function isNotEmptyString(str) {
 
 
 function isValidEmail(str) {
-  if (!isNotEmptyString(str)) return false
+  if (!isValidString(str)) return false
   const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
   if (!re.test(str.toLowerCase()) || str.length > 255) return false
   return true
@@ -22,7 +22,7 @@ function isBoolean(value) {
 }
 
 module.exports = {
-  isNotEmptyString,
+  isValidString,
   isValidEmail,
   isNullOrUndefined,
   isBoolean,

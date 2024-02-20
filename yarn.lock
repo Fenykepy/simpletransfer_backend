@@ -1488,6 +1488,17 @@ __metadata:
   languageName: node
   linkType: hard
 
+"better-sqlite3@npm:^9.4.1":
+  version: 9.4.1
+  resolution: "better-sqlite3@npm:9.4.1"
+  dependencies:
+    bindings: "npm:^1.5.0"
+    node-gyp: "npm:latest"
+    prebuild-install: "npm:^7.1.1"
+  checksum: 10c0/dc9ca07240d63222901a838ec0bd49b72e8bee1d7355e8b2c148958e204e7629b476894395259d44cf3234d8ed18c44a85dde0bff826c87510ecd8f7fa9f2aa7
+  languageName: node
+  linkType: hard
+
 "binary-extensions@npm:^2.0.0":
   version: 2.2.0
   resolution: "binary-extensions@npm:2.2.0"
@@ -5119,6 +5130,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "simpletransfer_backend@workspace:."
   dependencies:
+    better-sqlite3: "npm:^9.4.1"
     dotenv: "npm:^16.4.4"
     eslint: "npm:^8.56.0"
     jest: "npm:^29.7.0"

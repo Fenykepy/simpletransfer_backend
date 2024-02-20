@@ -9,7 +9,7 @@ exports.up = async function(knex) {
     // Database primary key
     table.increments('pk')
     // User side unique identifier
-    table.uuid('uuid')
+    table.uuid('uuid').defaultTo(knex.fn.uuid())
     // Transfer creation date (auto)
     table.timestamp('created_at').defaultTo(knex.fn.now())
     // Transfer last update date (manual)
@@ -33,7 +33,7 @@ exports.up = async function(knex) {
     // Database primary key
     table.increments('pk')
     // User side unique identifier
-    table.uuid('uuid')
+    table.uuid('uuid').defaultTo(knex.fn.uuid())
     // Recipient creation date (auto)
     table.timestamp('created_at').defaultTo(knex.fn.now())
     // Recipient last update date (manual)
