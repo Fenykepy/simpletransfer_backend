@@ -19,6 +19,7 @@ exports.up = async function(knex) {
     // Transfer archive file name
     table.string('archive_filename')
     table.string('original_filename')
+    table.integer('archive_size') // archive file zize
     table.string('object')
     table.string('message')
     table.boolean('complete').defaultTo(false) // true when all recipients have downloaded

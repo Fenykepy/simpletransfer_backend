@@ -53,7 +53,11 @@ async function createTransfer(ctx) {
     zip.addLocalFolder(dropfilePath)
   }
   zip.writeZip(zipPath)
-  
+
+  // We don't catch because it shouldn't fail without server error
+  const zipStats = await fs.stat(zipPath)
+
+
   const transfer = {
     uuid: uuid,
     email: ctx.request.body.email.trim(),
@@ -61,6 +65,7 @@ async function createTransfer(ctx) {
     message: ctx.request.body.message.trim(),
     original_filename: ctx.request.body.dropfile.trim(),
     archive_filename: zipName,
+    archive_size: zipStats.size,
   }
 
   const transfers = await db.createTransfer(transfer)
