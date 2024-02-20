@@ -19,7 +19,7 @@ PORT=4000
 # Transfer directory (where archives to be transfered are stored).
 # Must be a full path to the directory and directory must exists (it won't be created).
 # (without trailing '/')
-TRANSFER_DIRECTORY='/var/www/simpletransfer_backend/transfers'
+TRANSFERS_DIRECTORY='/var/www/simpletransfer_backend/transfers'
 # Dropbox directory (where user drops files to be transfered).
 # Must be a full path to the directory and directory must exists (it won't be created).
 # (without trailing '/')

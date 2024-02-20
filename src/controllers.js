@@ -1,5 +1,7 @@
 const fs = require('node:fs/promises')
 const path = require('path')
+const AdmZip = require("adm-zip")
+const { v4: uuidv4 } = require('uuid')
 
 const { APP_CONFIG } = require('../transferConfig')
 const db = require('./db')
@@ -15,6 +17,7 @@ async function createTransfer(ctx) {
   // {object: String, message: String, email: String, dropfile: String }
   let errors = []
   let dropfilePath
+  let stats
   if (!val.isValidString(ctx.request.body.object)) { errors.push({ object: "This field is required" }) }
   if (!val.isValidString(ctx.request.body.message)) { errors.push({ message: "This field is required" }) }
   if (!val.isValidEmail(ctx.request.body.email)) { errors.push({ email: "Invalid email" }) }
@@ -23,7 +26,7 @@ async function createTransfer(ctx) {
   } else { // we have a dropfile name, test if path exists
     dropfilePath = path.join(APP_CONFIG.dropboxDirectory, ctx.request.body.dropfile.trim())
     try {
-      const stats = await fs.stat(dropfilePath)
+      stats = await fs.stat(dropfilePath)
     } catch (error) {
       // File doesn't exists
       errors.push({ dropfile: "Invalid dropfile" })
@@ -36,15 +39,28 @@ async function createTransfer(ctx) {
     return
   }
 
-
-  // TODO zip dropfile and move it to transfers
-
+  const date = new Date()
+  const uuid = uuidv4()
+  const zipName = `${date.toISOString()}_${uuid}.zip`
+  const zipPath = path.join(APP_CONFIG.transfersDirectory, zipName)
+  
+  
+  // zip dropfile and move it to transfers
+  let zip = new AdmZip()
+  if (stats.isFile()) {
+    zip.addLocalFile(dropfilePath)
+  } else if (stats.isDirectory()) {
+    zip.addLocalFolder(dropfilePath)
+  }
+  zip.writeZip(zipPath)
+  
   const transfer = {
+    uuid: uuid,
     email: ctx.request.body.email.trim(),
     object: ctx.request.body.object.trim(),
     message: ctx.request.body.message.trim(),
     original_filename: ctx.request.body.dropfile.trim(),
-    archive_filename: '',
+    archive_filename: zipName,
   }
 
   const transfers = await db.createTransfer(transfer)

@@ -6,7 +6,7 @@ dotenv.config()
 const {
   NODE_ENV,
   PORT,
-  TRANSFER_DIRECTORY,
+  TRANSFERS_DIRECTORY,
   DROPBOX_DIRECTORY,
 } = process.env
 
@@ -22,7 +22,7 @@ exports.APP_CONFIG = {
    * must be a full path to the directory (from root)
    * (without trailing '/')
    */
-  transferDirectory: TRANSFER_DIRECTORY,
+  transfersDirectory: TRANSFERS_DIRECTORY,
   /*
    * Dropbox directory (where user drop files to be transfered).
    * must be a full path to the directory (from root)

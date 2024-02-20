@@ -16,13 +16,19 @@ let testFilePath = path.join(APP_CONFIG.dropboxDirectory, testFileName)
 async function writeTestFiles() {
   await fs.writeFile(testFilePath, 'Test content!')
   await fs.mkdir(testDirPath)
-  console.log('Successfully wrote files!')
-  console.log(testDirPath, testFilePath)
   const files = await fs.readdir(APP_CONFIG.dropboxDirectory)
-  console.log('Files:', files)
 }
 
 async function deleteTestFiles() {
+  const transfers = await db.getAllTransfers(1000)
+  for (const transfer of transfers) {
+    // Delete transfer file if any
+    try {
+      fs.rm(path.join(APP_CONFIG.transfersDirectory, transfer.archive_filename))
+    } catch (error) {
+      console.log(error)
+    }
+  }
   await fs.rm(testFilePath)
   await fs.rmdir(testDirPath)
 }
@@ -211,5 +217,8 @@ describe("Test creating transfer", () => {
     expect(res.body.message).toBe('Transfer message')
     expect(res.body.complete).toBe(0)
     expect(res.body.active).toBe(1)
+    
+    const stats = await fs.stat(path.join(APP_CONFIG.transfersDirectory, res.body.archive_filename))
+    expect(stats.isFile()).toBe(true)
   })
 })

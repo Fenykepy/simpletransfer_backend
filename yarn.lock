@@ -1237,6 +1237,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"adm-zip@npm:^0.5.10":
+  version: 0.5.10
+  resolution: "adm-zip@npm:0.5.10"
+  checksum: 10c0/1f391a4e02940688b6ca6d4b3ea96cc82a9dbe1596671d7dbc052f9a53ed2efa6ba9ba253f032ea16e70081f22d6ddd1af2d65d6be700853cdee9c2fc925c20e
+  languageName: node
+  linkType: hard
+
 "agent-base@npm:6, agent-base@npm:^6.0.2":
   version: 6.0.2
   resolution: "agent-base@npm:6.0.2"
@@ -5130,6 +5137,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "simpletransfer_backend@workspace:."
   dependencies:
+    adm-zip: "npm:^0.5.10"
     better-sqlite3: "npm:^9.4.1"
     dotenv: "npm:^16.4.4"
     eslint: "npm:^8.56.0"
