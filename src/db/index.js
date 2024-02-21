@@ -41,6 +41,14 @@ module.exports = {
       .select(fields)
   },
 
+  /* Return a specific transfer without recipients */
+  getTransferByPk(transferPk, fields = '*') {
+    return db('transfers')
+      .where({ pk: transferPk })
+      .first()
+      .select(fields)
+  },
+
   /* Return a specific tranfer with associated recipients */
   async getTransferDetail(transferUUID, transferFields = '*', recipientFields = '*') {
     const fields = addFieldToSelection('pk', transferFields)

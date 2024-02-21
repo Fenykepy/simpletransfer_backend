@@ -234,6 +234,38 @@ async function listDropbox(ctx) {
 }
 
 
+// Get download details (from transfer or recipient's transfer) public
+async function getDownload(ctx) {
+  let errors = []
+  let transfer
+
+  // First we try to get a recipient (more probable)
+  let recipient = await db.getRecipientByUUID(ctx.params.uuid)
+  if (recipient) {
+    // If we have a recipient, we get associated transfer
+    transfer = await db.getTransferByPk(recipient.transfer)
+  } else {
+    // If we have no recipient for uuid, we try to get transfer with same uuid
+    // (download comes from direct link)
+    transfer = await db.getTransferByUUID(ctx.params.uuid)
+  }
+  if (!transfer) { // no transfer found, 
+    ctx.response.status = 404
+    errors.push({ non_field_errors: "The transfer you are looking for could not be retrieved." })
+    ctx.body = { errors: errors }
+    return
+  }
+
+  ctx.body = {
+    uuid: ctx.params.uuid, // can be recipient or transfer uuid 
+    email: transfer.email, // sender email (to display on page)
+    size: transfer.archive_size,
+    object: transfer.object,
+    message: transfer.message,
+  }
+}
+
+
 module.exports = {
   getAllTransfers,
   createTransfer,
@@ -243,6 +275,7 @@ module.exports = {
   createRecipient,
   updateRecipient,
   listDropbox,
+  getDownload,
 }
 
 

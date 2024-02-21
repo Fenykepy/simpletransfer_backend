@@ -54,4 +54,6 @@ It's meant to be a simple tool for personnal use:
     { name: "my_directory", isDirectory: true },
 ]
 ```
+- `/api/download/<transfer_or_recipient_uuid>` GET method, public, returns transfer public fields (object, message, sender, size)
+- `/api/stream/<transfer_or_recipient_uuid>` GET method, public, start archive's streaming
 

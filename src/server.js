@@ -50,7 +50,8 @@ router.put('/api/recipients/:uuid', ctrl.updateRecipient)
 // List dropbox content
 router.get('/api/listdropbox', ctrl.listDropbox)
 
-
+// Download (from recipient or transfer) public data
+router.get('/api/downloads/:uuid', ctrl.getDownload)
 
 // Use the routes
 app.use(router.routes())

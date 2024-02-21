@@ -643,3 +643,56 @@ describe("Test updating recipient", () => {
     expect(res.body.active).toBe(0)
   })
 })
+
+
+
+describe("Test retrieving a specific download", () => {
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(5)
+    let transfers = await db.getAllTransfers(200)
+    for (let transfer of transfers) {
+      await createTestRecipients(3, transfer.pk) // create 3 recipients per transfer
+    }
+  })
+
+  afterAll(async () => {
+    await resetDb()
+  })
+
+  test("retrieving a specific download with invalid uuid should fail", async () => {
+    let downloadUUID = uuidv4()
+    let res = await request.get(`/api/downloads/${downloadUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
+  })
+
+  test("retrieving a specific download with transfer uuid should succeed", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let transferUUID = transfers[3].uuid
+    let res = await request.get(`/api/downloads/${transferUUID}`)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.body.uuid).toBe(transferUUID)
+    expect(res.body.email).toBe(transfers[3].email)
+    expect(res.body.size).toBe(transfers[3].archive_size)
+    expect(res.body.object).toBe(transfers[3].object)
+    expect(res.body.message).toBe(transfers[3].message)
+  })
+
+  test("retrieving a specific download with recipient uuid should succeed", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let recipients = await db.getTransferRecipients(transfers[3].pk)
+    let recipientUUID = recipients[0].uuid
+    let res = await request.get(`/api/downloads/${recipientUUID}`)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.body.uuid).toBe(recipientUUID)
+    expect(res.body.email).toBe(transfers[3].email)
+    expect(res.body.size).toBe(transfers[3].archive_size)
+    expect(res.body.object).toBe(transfers[3].object)
+    expect(res.body.message).toBe(transfers[3].message)
+  })
+})
+
