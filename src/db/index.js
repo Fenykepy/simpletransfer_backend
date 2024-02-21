@@ -48,11 +48,13 @@ module.exports = {
       .where({ uuid: transferUUID })
       .first()
       .select(fields)
-    const recipients = await db('recipients')
-      .where({ transfer: transfer.pk })
-      .select(recipientFields)
-      .orderBy('email', 'asc')
-    transfer.recipients = recipients
+    if (transfer) {
+      const recipients = await db('recipients')
+        .where({ transfer: transfer.pk })
+        .select(recipientFields)
+        .orderBy('email', 'asc')
+      transfer.recipients = recipients
+    }
 
     return transfer
   },

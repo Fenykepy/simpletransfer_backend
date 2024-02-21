@@ -48,6 +48,16 @@ async function createTestTransfers(n) {
   }
 }
 
+async function createTestRecipients(n, transferPk) {
+  // Create fake transfers
+  for (let i = 1; i <= n; i++) {
+    await db.createRecipient({
+      email: `test_recipient${i}@example.com`,
+      transfer: transferPk,
+    })
+  }
+}
+
 async function setDb() {
   await knex.migrate.rollback()
   await knex.migrate.latest()
@@ -231,6 +241,63 @@ describe("Test creating transfer", () => {
 })
 
 
+
+describe("Test retrieving a specific transfer", () => {
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(5)
+    let transfers = await db.getAllTransfers(200)
+    for (let transfer of transfers) {
+      await createTestRecipients(3, transfer.pk) // create 3 recipients per transfer
+    }
+  })
+
+  afterAll(async () => {
+    await resetDb()
+  })
+
+  test("retrieving a specific transfer without authentication should fail", async () => {
+  })
+
+  test("retrieving a specific transfer with invalid uuid should fail", async () => {
+    let transferUUID = uuidv4()
+    let res = await request.get(`/api/transfers/${transferUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.error).toBe('The transfer you are looking for could not be retrieved.')
+  })
+
+  test("retrieving a specific transfer with valid uuid should succeed and return nested recipients", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let transferUUID = transfers[3].uuid
+    let res = await request.get(`/api/transfers/${transferUUID}`)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.body.uuid).toBeDefined()
+    expect(res.body.created_at).toBeDefined()
+    expect(res.body.updated_at).toBe(null)
+    expect(res.body.archive_filename).toBe('archive2')
+    expect(res.body.original_filename).toBe('filename2')
+    expect(res.body.email).toBe('test2@example.com')
+    expect(res.body.object).toBe('Test 2')
+    expect(res.body.message).toBe('Test 2 message.')
+    expect(res.body.complete).toBe(0)
+    expect(res.body.active).toBe(1)
+    expect(res.body.recipients.length).toBe(3)
+    for (let recipient of res.body.recipients) {
+      expect(recipient.pk).toBeDefined()
+      expect(recipient.uuid).toBeDefined()
+      expect(recipient.created_at).toBeDefined()
+      expect(recipient.updated_at).toBeDefined()
+      expect(recipient.email).toBeDefined()
+      expect(recipient.complete).toBe(0)
+      expect(recipient.active).toBe(1)
+      expect(recipient.download_dates).toBe(null)
+    }
+  })
+})
+
+
+
 describe("Test updating a transfer", () => {
   beforeAll(async () => {
     await setDb()
@@ -338,6 +405,7 @@ describe("Test updating a transfer", () => {
 })
 
 
+
 const testArchiveName = 'testArchive.zip'
 const testArchivePath = path.join(APP_CONFIG.transfersDirectory, testArchiveName)
 describe("Test deleting a transfer", () => {
@@ -385,5 +453,3 @@ describe("Test deleting a transfer", () => {
     expect(await filesystem.fileExists(testArchivePath)).toBe(false)
   })
 })
-
-
