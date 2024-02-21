@@ -39,7 +39,6 @@ It's meant to be a simple tool for personnal use:
 {
     email: "recipient@example.com", // recipient's email, required
     transfer: "<transfer_uuid>", // transfer's uuid, required
-    active: false, // recipients status, optional (defaults to true)
 }
 ```
 - `/api/recipients/<recipient_uuid>` PUT method, update a recipient:

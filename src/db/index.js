@@ -1,7 +1,7 @@
 const db = require('./connection')
 
 function addFieldToSelection(field, selection) {
-  if (selection = '*') { return selection } // all fields already included, nothing to do
+  if (selection === '*') { return selection } // all fields already included, nothing to do
   if (Array.isArray(selection)) { // We got an array on fields
     if (selection.contains(field)) { // field already included, nothing to do
       return selection
@@ -89,6 +89,40 @@ module.exports = {
   },
 
 
+  /* Return all recipients (paginated with pk as cursor) */
+  getAllRecipients(limit, cursor, fields = '*', before = false) {
+    const order = before ? 'asc' : 'desc'
+    const comparator = before ? '>' : '<'
+    const query = db('recipients')
+      .select(fields)
+      .orderBy('recipients.pk', order)
+      .limit(limit)
+    if (cursor) {
+      query.where('recipients.pk', comparator, cursor)
+    }
+
+    return query
+  },
+
+
+  /* Return a specific recipient */
+  getRecipientByUUID(recipientUUID, fields = '*') {
+    return db('recipients')
+      .where({ uuid: recipientUUID })
+      .first()
+      .select(fields)
+  },
+
+
+  /* Return all recipients for given transfer */
+  getTransferRecipients(transferPk, fields = '*') {
+    return db('recipients')
+      .where({ transfer: transferPk })
+      .select(fields)
+      .orderBy('email', 'asc')
+  },
+
+
   /* Create a recipient and returns it */
   createRecipient(recipient) {
     return db('recipients')
@@ -102,7 +136,7 @@ module.exports = {
     return db('recipients')
       .where({ uuid: recipientUUID })
       .update({
-        updated_a: db.fn.now(),
+        updated_at: db.fn.now(),
         ...fieldsToUpdate
       })
       .returning('*')

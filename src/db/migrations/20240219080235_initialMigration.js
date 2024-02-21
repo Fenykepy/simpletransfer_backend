@@ -50,7 +50,8 @@ exports.up = async function(knex) {
     // UUID for unique url identifier
     table.boolean('complete').defaultTo(false) // true when downloaded
     table.boolean('active').defaultTo(true) // false if recipient is no more allowed to download
-    table.string('download_dates') // coma separated list of downloads dates
+    table.json('download_dates') // array of downloads dates
+    table.json('email_sent_at') // array of emails dates
     table.unique('uuid')
     table.index('uuid')
   })

@@ -159,15 +159,14 @@ async function deleteTransfer(ctx) {
 
 // Create new recipient
 async function createRecipient(ctx) {
-  //{ email: String, transfer: UUID, active: Bool}
+  //{ email: String, transfer: UUID}
   let errors = []
   if (!val.isValidEmail(ctx.request.body.email)) { errors.push({ email: "Invalid email" }) }
   const transfer = await db.getTransferDetail(ctx.request.body.transfer, 'pk')
-  if (!transfer) { errors.push({ transfer: "Invalid transfer" }) }
-  let active = isBoolean(ctx.request.body.active) ? ctx.request.body.active : true // default to true  
+  if (!transfer) { errors.push({ transfer: "Invalid transfer UUID" }) }
 
   if (errors.length > 0) {
-    ctx.response.status = 
+    ctx.response.status = 422
     ctx.body = { errors: errors }
     return
   }
@@ -175,10 +174,9 @@ async function createRecipient(ctx) {
   const recipient = {
     email: ctx.request.body.email.trim(),
     transfer: transfer.pk,
-    active: active,
   }
 
-  // TODO send mail
+  // TODO send mail if active
 
   const recipients = await db.createRecipient(recipient)
   ctx.response.status = 201
@@ -190,19 +188,21 @@ async function createRecipient(ctx) {
 // Update recipient
 async function updateRecipient(ctx) {
   // We can't change email because it was already send, so only updatable field is active
-  let fields
-  if (!isBoolean(ctx.request.body.active)) {
+
+  // Check if recipient exists
+  const recipient = await db.getRecipientByUUID(ctx.params.uuid, 'pk')
+  if (!recipient) {
+    ctx.response.status = 404
+    ctx.body = { error: 'The recipient you want to update could not be retrieved.' }
+    return
+  }
+  if (!val.isBoolean(ctx.request.body.active)) {
     ctx.response.status = 422
-    ctx.body = { errors: { active: "Invalid value" }}
+    ctx.body = { errors: [{ active: "Invalid value" }]}
     return
   }
   const recipients = await db.updateRecipient(ctx.params.uuid, { active: ctx.request.body.active })
-  if (recipient) {
-    ctx.body = recipient[0]
-  } else {
-    ctx.response.status = 404
-    ctx.body = { error: 'The recipient you want to update could not be retrieved.' }
-  }
+  ctx.body = recipients[0]
 }
 
 

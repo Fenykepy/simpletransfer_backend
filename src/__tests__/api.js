@@ -18,7 +18,6 @@ let testFilePath = path.join(APP_CONFIG.dropboxDirectory, testFileName)
 async function writeTestFiles() {
   await fs.writeFile(testFilePath, 'Test content!')
   await fs.mkdir(testDirPath)
-  const files = await fs.readdir(APP_CONFIG.dropboxDirectory)
 }
 
 async function deleteTestFiles() {
@@ -399,6 +398,7 @@ describe("Test updating a transfer", () => {
     let res = await req.send({ email: 'test@example.com' })
     expect(res.statusCode).toBe(200)
     expect(res.body.errors).toBe(undefined)
+    expect(res.body.updated_at).toBeDefined()
     expect(res.body.uuid).toBeDefined()
     expect(res.body.email).toBe('test@example.com')
   })
@@ -479,5 +479,163 @@ describe("Test listing dropbox content", () => {
     expect(res.body[0].isDirectory).toBe(true)
     expect(res.body[1].name).toBe(testFileName)
     expect(res.body[1].isDirectory).toBe(false)
+  })
+})
+
+
+
+describe("Test creating recipient", () => {
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(1)
+  })
+
+  afterAll(async () => {
+    await resetDb()
+  })
+
+  test("creating recipient without authentication should fail", async () => {
+  })
+
+  test("creating recipient with invalid transfer uuid should fail", async () => {
+    let newRecipient = {
+      email: "test@example.com",
+      transfer: uuidv4(),
+    }
+    let req = request.post('/api/recipients')
+    let res = await req.send(newRecipient)
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].transfer).toBe('Invalid transfer UUID')
+  })
+
+  test("creating recipient with empty transfer uuid should fail", async () => {
+    let newRecipient = {
+      email: "test@example.com",
+      transfer: ' ',
+    }
+    let req = request.post('/api/recipients')
+    let res = await req.send(newRecipient)
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].transfer).toBe('Invalid transfer UUID')
+  })
+
+  test("creating recipient with empty email should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let newRecipient = {
+      email: "",
+      transfer: transfers[0].uuid,
+    }
+    let req = request.post('/api/recipients')
+    let res = await req.send(newRecipient)
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].email).toBe('Invalid email')
+  })
+
+  test("creating recipient with invalid email should fail", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let newRecipient = {
+      email: 'invalid@transfer@test.bizarre',
+      transfer: transfers[0].uuid,
+    }
+    let req = request.post('/api/recipients')
+    let res = await req.send(newRecipient)
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].email).toBe('Invalid email')
+  })
+
+  test("creating recipient with valid data should return it", async () => {
+    let transfers = await db.getAllTransfers(1)
+    let newRecipient = {
+      email: 'test@example.com',
+      transfer: transfers[0].uuid,
+    }
+    let req = request.post('/api/recipients')
+    let res = await req.send(newRecipient)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.statusCode).toBe(201)
+    expect(res.body.uuid).toBeDefined()
+    expect(res.body.created_at).toBeDefined()
+    expect(res.body.updated_at).toBe(null)
+    expect(res.body.email).toBe('test@example.com')
+    expect(res.body.complete).toBe(0)
+    expect(res.body.active).toBe(1)
+  })
+})
+
+
+
+describe("Test updating recipient", () => {
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(3)
+    let transfers = await db.getAllTransfers(200) 
+    await createTestRecipients(5, transfers[0].pk)
+  })
+
+  afterAll(async () => {
+    await resetDb()
+  })
+
+  test("updating a recipient without authentication should fail", async () => {
+  })
+
+  test("updating recipient with unupdatable fields should fail", async () => {
+    let recipients = await db.getAllRecipients(1)
+    let recipientUUID = recipients[0].uuid
+    let req = request.put(`/api/recipients/${recipientUUID}`)
+    let res = await req.send({ 
+      pk: 3,
+      uuid: uuidv4(),
+      created_at: new Date(),
+      updated_at: new Date(),
+      email: 'new@example.com',
+      transfer: 2,
+      complete: true,
+      download_dates: ["2023"],
+      email_sent_at: ["2022"],
+    })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].active).toBe('Invalid value')
+  })
+
+  test("updating recipient with invalid active field should fail", async () => {
+    let recipients = await db.getAllRecipients(1)
+    let recipientUUID = recipients[0].uuid
+    let req = request.put(`/api/recipients/${recipientUUID}`)
+    let res = await req.send({ 
+      active: "test"
+    })
+    expect(res.statusCode).toBe(422)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].active).toBe('Invalid value')
+  })
+
+  test("updating recipient with invalid uuid should fail", async () => {
+    let recipientUUID = uuidv4()
+    let req = request.put(`/api/recipients/${recipientUUID}`)
+    let res = await req.send({ 
+      active: false
+    })
+    expect(res.statusCode).toBe(404)
+    expect(res.body.error).toBe('The recipient you want to update could not be retrieved.')
+  })
+
+  test("updating recipient with valid active should succeed", async () => {
+    let recipients = await db.getAllRecipients(1)
+    let recipientUUID = recipients[0].uuid
+    let req = request.put(`/api/recipients/${recipientUUID}`)
+    let res = await req.send({ 
+      active: false
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    expect(res.body.uuid).toBeDefined()
+    expect(res.body.updated_at).toBeDefined()
+    expect(res.body.active).toBe(0)
   })
 })
