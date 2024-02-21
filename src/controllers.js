@@ -79,11 +79,13 @@ async function createTransfer(ctx) {
 // Get transfer detail
 async function getTransferDetail(ctx) {
   const transfer = await db.getTransferDetail(ctx.params.uuid)
+  let errors = []
   if (transfer) {
     ctx.body = transfer
   } else {
       ctx.response.status = 404
-      ctx.body = { error: 'The transfer you are looking for could not be retrieved.' }
+      errors.push({ non_field_errors: "The transfer you are looking for could not be retrieved." })
+      ctx.body = { errors: errors }
   }
 }
 
@@ -92,16 +94,17 @@ async function getTransferDetail(ctx) {
 async function updateTransfer(ctx) {
   // We can't update object and message because they were already sent by email to recipients
   // We can update email and active status
-
+  let errors = []
+  
   // Check if transfer exists
   const transfer = await db.getTransferByUUID(ctx.params.uuid, 'pk')
   if (!transfer) {
     ctx.response.status = 404
-    ctx.body = { error: 'The transfer you want to update could not be retrieved.' }
+    errors.push({ non_field_errors: "The transfer you want to update could not be retrieved." })
+    ctx.body = { errors: errors }
     return
   }
 
-  let errors = []
   let fieldsToUpdate = {}
   if (!val.isNullOrUndefined(ctx.request.body.email)) {
     if (!val.isValidEmail(ctx.request.body.email)) {
@@ -117,7 +120,7 @@ async function updateTransfer(ctx) {
       fieldsToUpdate.active = ctx.request.body.active
     }
   }
-  if (Object.keys(fieldsToUpdate).length == 0) { errors.push({ misc: "No valid field to update" }) } 
+  if (Object.keys(fieldsToUpdate).length == 0) { errors.push({ non_field_errors: "No valid field to update" }) } 
   if (errors.length > 0) {
     ctx.response.status = 422
     ctx.body = { errors: errors }
@@ -134,12 +137,14 @@ async function updateTransfer(ctx) {
 async function deleteTransfer(ctx) {
   // We should always prefer deactivating a transfer rather than deleting it
   // this way user doesn't see a 404 on transfer's page but a "Deactivated transfer".
+  let errors = []
 
   // Check if transfer exists
   const transfer = await db.getTransferByUUID(ctx.params.uuid, '*')
   if (!transfer) {
     ctx.response.status = 404
-    ctx.body = { error: 'The transfer you want to delete could not be retrieved.' }
+    errors.push({ non_field_errors: 'The transfer you want to delete could not be retrieved.' })
+    ctx.body = { errors: errors }
     return
   }
 
@@ -188,17 +193,20 @@ async function createRecipient(ctx) {
 // Update recipient
 async function updateRecipient(ctx) {
   // We can't change email because it was already send, so only updatable field is active
+  let errors = []
 
   // Check if recipient exists
   const recipient = await db.getRecipientByUUID(ctx.params.uuid, 'pk')
   if (!recipient) {
     ctx.response.status = 404
-    ctx.body = { error: 'The recipient you want to update could not be retrieved.' }
+    errors.push({ non_field_errors: 'The recipient you want to update could not be retrieved.' })
+    ctx.body = { errors: errors }
     return
   }
   if (!val.isBoolean(ctx.request.body.active)) {
     ctx.response.status = 422
-    ctx.body = { errors: [{ active: "Invalid value" }]}
+    errors.push({ active: "Invalid value" })
+    ctx.body = { errors: errors }
     return
   }
   const recipients = await db.updateRecipient(ctx.params.uuid, { active: ctx.request.body.active })

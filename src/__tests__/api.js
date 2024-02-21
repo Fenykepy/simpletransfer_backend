@@ -262,7 +262,8 @@ describe("Test retrieving a specific transfer", () => {
     let transferUUID = uuidv4()
     let res = await request.get(`/api/transfers/${transferUUID}`)
     expect(res.statusCode).toBe(404)
-    expect(res.body.error).toBe('The transfer you are looking for could not be retrieved.')
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
   })
 
   test("retrieving a specific transfer with valid uuid should succeed and return nested recipients", async () => {
@@ -327,7 +328,7 @@ describe("Test updating a transfer", () => {
     })
     expect(res.statusCode).toBe(422)
     expect(res.body.errors.length).toBe(1)
-    expect(res.body.errors[0].misc).toBe('No valid field to update')
+    expect(res.body.errors[0].non_field_errors).toBe('No valid field to update')
   })
 
   test("updating transfer with empty email and valid active should fail", async () => {
@@ -358,7 +359,7 @@ describe("Test updating a transfer", () => {
     expect(res.statusCode).toBe(422)
     expect(res.body.errors.length).toBe(2)
     expect(res.body.errors[0].active).toBe('Invalid boolean')
-    expect(res.body.errors[1].misc).toBe('No valid field to update')
+    expect(res.body.errors[1].non_field_errors).toBe('No valid field to update')
   })
 
   test("updating transfer with invalid active should fail", async () => {
@@ -369,7 +370,7 @@ describe("Test updating a transfer", () => {
     expect(res.statusCode).toBe(422)
     expect(res.body.errors.length).toBe(2)
     expect(res.body.errors[0].active).toBe('Invalid boolean')
-    expect(res.body.errors[1].misc).toBe('No valid field to update')
+    expect(res.body.errors[1].non_field_errors).toBe('No valid field to update')
   })
 
   test("updating transfer with valid active should succeed", async () => {
@@ -388,7 +389,8 @@ describe("Test updating a transfer", () => {
     let req = request.put(`/api/transfers/${transferUUID}`)
     let res = await req.send({ email: 'test@example.com' })
     expect(res.statusCode).toBe(404)
-    expect(res.body.error).toBe('The transfer you want to update could not be retrieved.')
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you want to update could not be retrieved.')
   })
 
   test("updating transfer with valid email should succeed", async () => {
@@ -431,7 +433,8 @@ describe("Test deleting a transfer", () => {
     let transferUUID = uuidv4()
     let res = await request.delete(`/api/transfers/${transferUUID}`)
     expect(res.statusCode).toBe(404)
-    expect(res.body.error).toBe('The transfer you want to delete could not be retrieved.')
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you want to delete could not be retrieved.')
   })
 
   test("deleting a transfer with valid uuid should succeed", async () => {
@@ -622,7 +625,8 @@ describe("Test updating recipient", () => {
       active: false
     })
     expect(res.statusCode).toBe(404)
-    expect(res.body.error).toBe('The recipient you want to update could not be retrieved.')
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The recipient you want to update could not be retrieved.')
   })
 
   test("updating recipient with valid active should succeed", async () => {
