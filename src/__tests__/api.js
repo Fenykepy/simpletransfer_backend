@@ -453,3 +453,31 @@ describe("Test deleting a transfer", () => {
     expect(await filesystem.fileExists(testArchivePath)).toBe(false)
   })
 })
+
+
+
+describe("Test listing dropbox content", () => {
+  beforeAll(async () => {
+    await writeTestFiles()
+  })
+
+  afterAll(async () => {
+    await fs.rm(testFilePath)
+    await fs.rmdir(testDirPath)
+  })
+
+  test("listing dropbox content without authentication should fail", async () => {
+  })
+
+  
+  test("listing dropbox should return content names and content types", async () => {
+    let res = await request.get('/api/listdropbox')
+    expect(res.body.errors).toBe(undefined)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.length).toBe(2)
+    expect(res.body[0].name).toBe(testDirName)
+    expect(res.body[0].isDirectory).toBe(true)
+    expect(res.body[1].name).toBe(testFileName)
+    expect(res.body[1].isDirectory).toBe(false)
+  })
+})

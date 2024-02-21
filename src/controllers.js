@@ -213,7 +213,16 @@ async function updateRecipient(ctx) {
 
 // List dropbox content
 async function listDropbox(ctx) {
-  console.log('List dropbox')
+  const content = await fs.readdir(APP_CONFIG.dropboxDirectory, { withFileTypes: true })
+  let results = []
+  for (let dirent of content) {
+    if (dirent.isDirectory()) {
+      results.push({ name: dirent.name, isDirectory: true })
+    } else if (dirent.isFile()) {
+      results.push({ name: dirent.name, isDirectory: false })
+    }
+  }
+  ctx.body = results
 }
 
 
