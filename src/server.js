@@ -50,8 +50,11 @@ router.put('/api/recipients/:uuid', ctrl.updateRecipient)
 // List dropbox content
 router.get('/api/listdropbox', ctrl.listDropbox)
 
-// Download (from recipient or transfer) public data
+// Download (from recipient or transfer uuid) public data
 router.get('/api/downloads/:uuid', ctrl.getDownload)
+
+// Stream zip archive (from recipient or transfer uuid) public data
+router.get('/api/stream/:uuid', ctrl.stream)
 
 // Use the routes
 app.use(router.routes())

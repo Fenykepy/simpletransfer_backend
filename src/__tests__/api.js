@@ -6,6 +6,7 @@ const filesystem = require('../utils/filesystem')
 const { APP_CONFIG } = require('../../transferConfig')
 const path = require('path')
 const fs = require('node:fs/promises')
+const AdmZip = require("adm-zip")
 const { v4: uuidv4 } = require('uuid')
 
 const request = supertest(app.callback())
@@ -30,7 +31,7 @@ async function deleteTestFiles() {
       console.log(error)
     }
   }
-  await fs.rm(testFilePath)
+await fs.rm(testFilePath)
   await fs.rmdir(testDirPath)
 }
 
@@ -283,6 +284,7 @@ describe("Test retrieving a specific transfer", () => {
     expect(res.body.complete).toBe(0)
     expect(res.body.active).toBe(1)
     expect(res.body.recipients.length).toBe(3)
+    expect(res.body.download_dates.length).toBe(2) // empty json array
     for (let recipient of res.body.recipients) {
       expect(recipient.pk).toBeDefined()
       expect(recipient.uuid).toBeDefined()
@@ -291,7 +293,7 @@ describe("Test retrieving a specific transfer", () => {
       expect(recipient.email).toBeDefined()
       expect(recipient.complete).toBe(0)
       expect(recipient.active).toBe(1)
-      expect(recipient.download_dates).toBe(null)
+      expect(recipient.download_dates.length).toBe(2) // empty json array
     }
   })
 })
@@ -378,7 +380,7 @@ describe("Test updating a transfer", () => {
     let transferUUID = transfers[0].uuid
     let req = request.put(`/api/transfers/${transferUUID}`)
     let res = await req.send({ active: false })
-    expect(res.statusCode).toBe(200)
+expect(res.statusCode).toBe(200)
     expect(res.body.errors).toBe(undefined)
     expect(res.body.uuid).toBeDefined()
     expect(res.body.active).toBe(0)
@@ -693,6 +695,132 @@ describe("Test retrieving a specific download", () => {
     expect(res.body.size).toBe(transfers[3].archive_size)
     expect(res.body.object).toBe(transfers[3].object)
     expect(res.body.message).toBe(transfers[3].message)
+  })
+
+  test("retrieving a specific download with deactivated recipient uuid should fail", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let recipients = await db.getTransferRecipients(transfers[3].pk)
+    let recipientUUID = recipients[0].uuid
+    await db.updateRecipient(recipientUUID, { active: false })
+    let res = await request.get(`/api/downloads/${recipientUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
+  })
+
+  test("retrieving a specific download with deactivated transfer uuid should fail", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let transferUUID = transfers[3].uuid
+    await db.updateTransfer(transfers[3].uuid, { active: false })
+    let res = await request.get(`/api/downloads/${transferUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
+  })
+})
+
+
+
+const zipFilename = 'test.zip'
+const zipContent = "Test content!"
+const zipPath = path.join(APP_CONFIG.transfersDirectory, zipFilename)
+describe("Test downloading archive stream", () => {
+  
+  beforeAll(async () => {
+    await setDb()
+    await createTestTransfers(1)
+    let transfers = await db.getAllTransfers(200)
+    for (let transfer of transfers) {
+      await createTestRecipients(3, transfer.pk) // create 3 recipients per transfer
+    }
+    
+    let zip = new AdmZip()
+    zip.addFile(zipFilename, Buffer.from(zipContent, "utf8"), "entry comment goes here")
+    zip.writeZip(zipPath)
+
+    await db.updateTransfer(transfers[0].uuid, { archive_filename: zipFilename })
+  })
+
+  afterAll(async () => {
+    if (await filesystem.fileExists(zipPath)) {
+      await fs.rm(zipPath)
+    }
+    await resetDb()
+  })
+
+  test("downloading with invalid uuid should fail", async () => {
+    let downloadUUID = uuidv4()
+    let res = await request.get(`/api/stream/${downloadUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
+  })
+  
+  test("downloading with transfer uuid should succeed", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let transferUUID = transfers[0].uuid
+    let res = await request.get(`/api/stream/${transferUUID}`)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)
+    
+    let transfer = await db.getTransferDetail(transferUUID)
+    expect(JSON.parse(transfer.download_dates).length).toBe(1)
+    expect(transfer.complete).toBe(0)
+    for (let recipient of transfer.recipients) {
+      expect(recipient.complete).toBe(0)
+    }
+  })
+  
+  test("downloading with recipient uuid should succeed", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let recipients = await db.getTransferRecipients(transfers[0].pk)
+    let recipientUUID = recipients[0].uuid
+    let res = await request.get(`/api/stream/${recipientUUID}`)
+    expect(res.statusCode).toBe(200)
+    expect(res.body.errors).toBe(undefined)    
+
+    let transfer = await db.getTransferByUUID(transfers[0].uuid)
+    expect(JSON.parse(transfer.download_dates).length).toBe(2)
+    expect(transfer.complete).toBe(0)
+
+    let recipient = await db.getRecipientByUUID(recipientUUID)
+    expect(JSON.parse(recipient.download_dates).length).toBe(1)
+    expect(recipient.complete).toBe(1)
+  })
+  
+  test("downloading last recipient uuid should mark transfer as complete", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let recipients = await db.getTransferRecipients(transfers[0].pk)
+    for (let recipient of recipients) {
+      let res = await request.get(`/api/stream/${recipient.uuid}`)
+      expect(res.statusCode).toBe(200)
+      expect(res.body.errors).toBe(undefined)    
+    }
+
+    let transfer = await db.getTransferByUUID(transfers[0].uuid)
+    expect(JSON.parse(transfer.download_dates).length).toBe(5)
+    expect(transfer.complete).toBe(1)
+  })
+
+  test("downloading with deactivated recipient uuid should fail", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let recipients = await db.getTransferRecipients(transfers[0].pk)
+    let recipientUUID = recipients[0].uuid
+    await db.updateRecipient(recipientUUID, { active: false })
+    let res = await request.get(`/api/stream/${recipientUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
+  })
+
+  test("downloading with deactivated transfer uuid should fail", async () => {
+    let transfers = await db.getAllTransfers(200)
+    let transferUUID = transfers[0].uuid
+    await db.updateTransfer(transferUUID, { active: false })
+    let res = await request.get(`/api/stream/${transferUUID}`)
+    expect(res.statusCode).toBe(404)
+    expect(res.body.errors.length).toBe(1)
+    expect(res.body.errors[0].non_field_errors).toBe('The transfer you are looking for could not be retrieved.')
   })
 })
 

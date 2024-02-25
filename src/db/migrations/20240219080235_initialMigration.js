@@ -22,6 +22,7 @@ exports.up = async function(knex) {
     table.integer('archive_size') // archive file zize
     table.string('object')
     table.string('message')
+    table.json('download_dates').defaultTo([]) // array of downloads dates
     table.boolean('complete').defaultTo(false) // true when all recipients have downloaded
     table.boolean('active').defaultTo(true) // false is recipient is no more allowed to download
     table.unique('uuid')
@@ -50,7 +51,7 @@ exports.up = async function(knex) {
     // UUID for unique url identifier
     table.boolean('complete').defaultTo(false) // true when downloaded
     table.boolean('active').defaultTo(true) // false if recipient is no more allowed to download
-    table.json('download_dates') // array of downloads dates
+    table.json('download_dates').defaultTo([]) // array of downloads dates
     table.json('email_sent_at') // array of emails dates
     table.unique('uuid')
     table.index('uuid')

@@ -1,4 +1,5 @@
 const fs = require('node:fs/promises')
+const createReadStream = require('fs').createReadStream
 const path = require('path')
 const AdmZip = require("adm-zip")
 const { v4: uuidv4 } = require('uuid')
@@ -233,23 +234,27 @@ async function listDropbox(ctx) {
   ctx.body = results
 }
 
-
-// Get download details (from transfer or recipient's transfer) public
-async function getDownload(ctx) {
-  let errors = []
+async function getRecipientAndTransferByUUID(uuid) {
   let transfer
-
   // First we try to get a recipient (more probable)
-  let recipient = await db.getRecipientByUUID(ctx.params.uuid)
+  let recipient = await db.getRecipientByUUID(uuid)
   if (recipient) {
     // If we have a recipient, we get associated transfer
     transfer = await db.getTransferByPk(recipient.transfer)
   } else {
     // If we have no recipient for uuid, we try to get transfer with same uuid
     // (download comes from direct link)
-    transfer = await db.getTransferByUUID(ctx.params.uuid)
+    transfer = await db.getTransferByUUID(uuid)
   }
-  if (!transfer) { // no transfer found, 
+  return [recipient, transfer]
+}
+
+// Get download details (from transfer or recipient's transfer) public
+async function getDownload(ctx) {
+  let errors = []
+  const [recipient, transfer] = await getRecipientAndTransferByUUID(ctx.params.uuid)
+
+  if (!transfer || (recipient && !recipient.active) || !transfer.active) { // no transfer found, or not active transfer or recipient 
     ctx.response.status = 404
     errors.push({ non_field_errors: "The transfer you are looking for could not be retrieved." })
     ctx.body = { errors: errors }
@@ -266,6 +271,66 @@ async function getDownload(ctx) {
 }
 
 
+async function stream(ctx) {
+  let errors = []
+  const [recipient, transfer] = await getRecipientAndTransferByUUID(ctx.params.uuid)
+
+  if (!transfer || (recipient && !recipient.active) || !transfer.active) { // no transfer found, or not active transfer or recipient 
+    ctx.response.status = 404
+    errors.push({ non_field_errors: "The transfer you are looking for could not be retrieved." })
+    ctx.body = { errors: errors }
+    return
+  }
+  const archivePath = path.join(APP_CONFIG.transfersDirectory, transfer.archive_filename)
+  // If archive file doesn't exists any more, return error
+  if (!await filesystem.isFile(archivePath)) {
+    console.log('archive not found')
+    errors.push({ non_field_errors: "Transfer file not found" })
+    ctx.response.status = 500
+    ctx.body = { errors: errors }
+
+  }
+  const src = createReadStream(archivePath)
+  ctx.response.set("content-type", "application/zip")
+  ctx.body = src
+
+  // TODO send email to sender
+  
+  // Set recipient and transfer download dates and complete
+  let date = new Date()
+
+  if (recipient) {
+    // If we have a recipient, we set it complete and add download date
+    let download_dates = JSON.parse(recipient.download_dates)
+    download_dates.push(date)
+    await db.updateRecipient(recipient.uuid, { 
+      complete: true,
+      download_dates: JSON.stringify(download_dates),
+    })
+  }
+
+  if (!transfer.complete) {
+    let recipients = await db.getTransferRecipients(transfer.pk, ['complete', 'active'])
+    let complete = true
+    for (let recipient of recipients) { // If one of recipients isn't complete, transfer is not
+      if (recipient.active && !recipient.complete) {
+        complete = false
+        break
+      }
+    }
+    if (complete) {
+      await db.updateTransfer(transfer.uuid, { complete: true })
+    }
+  }
+
+  let download_dates = JSON.parse(transfer.download_dates)
+  download_dates.push(date)
+  await db.updateTransfer(transfer.uuid, {
+    download_dates: JSON.stringify(download_dates),
+  })
+}
+
+
 module.exports = {
   getAllTransfers,
   createTransfer,
@@ -276,6 +341,7 @@ module.exports = {
   updateRecipient,
   listDropbox,
   getDownload,
+  stream,
 }
 
 
