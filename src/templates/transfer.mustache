@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>Simple Transfer | {{ object }}</title>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <link rel="stylesheet" href="/statics/styles.css">
+  </head>
+  <body>
+    <article>
+      <div class="content">
+        <h5>{{ object}}</h5>
+        <p class="message">{{ message }}</p>
+      </div>
+      <footer>
+        <div class="fileInfo">{{ filename }} • {{ filesize }}</div>
+        <a class="button download" href="{{ link }}">Télécharger</a>
+      </footer>
+    </article>
+  </body>
+</html>

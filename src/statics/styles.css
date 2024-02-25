@@ -1,0 +1,44 @@
+
+article {
+    max-width: 400px;
+    max-height: calc(100vh - 100px);
+    margin: 50px auto;
+    padding: 20px 0;
+    border-radius: 10px;
+    box-shadow: 0 0 8px #C7C7C7;
+    border: 1px solid #CCCCCC;
+    text-align: center;
+}
+
+.content, .fileInfo, .download {
+    padding-right: 40px;
+    padding-left: 40px;
+}
+
+.content {
+    padding-bottom: 20px;
+}
+
+.message {
+    padding-top: 20px;
+    text-align: left;
+    white-space: pre-line;
+}
+
+.errorMessage {
+    white-space: pre-line;
+}
+
+.fileInfo {
+    border-bottom: 1px solid #CCC;
+    border-top: 1px solid #CCC;
+    padding-top: 1.0rem;
+    padding-bottom: 1.0rem;
+    color: #787878;
+    font-size: 1.0rem;
+}
+
+.download {
+    margin-top: 20px;
+    margin-bottom: 5px;
+}

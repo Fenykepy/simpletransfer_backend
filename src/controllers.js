@@ -1,13 +1,16 @@
 const fs = require('node:fs/promises')
-const createReadStream = require('fs').createReadStream
+const { createReadStream } = require('fs')
+const { readFileSync } = require('fs')
 const path = require('path')
 const AdmZip = require("adm-zip")
 const { v4: uuidv4 } = require('uuid')
+const Mustache = require('mustache')
 
 const { APP_CONFIG } = require('../transferConfig')
 const db = require('./db')
 const val = require('./utils/validate')
 const filesystem = require('./utils/filesystem')
+const humanSize = require('./utils/humanSize')
 
 // List all transfers
 async function getAllTransfers(ctx) {
@@ -249,29 +252,55 @@ async function getRecipientAndTransferByUUID(uuid) {
   return [recipient, transfer]
 }
 
-// Get download details (from transfer or recipient's transfer) public
-async function getDownload(ctx) {
-  let errors = []
+// Get transfer html page (from transfer or recipient's uuid) public
+async function getTransferHtml(ctx) {
   const [recipient, transfer] = await getRecipientAndTransferByUUID(ctx.params.uuid)
 
-  if (!transfer || (recipient && !recipient.active) || !transfer.active) { // no transfer found, or not active transfer or recipient 
+  const errorTemplate = await fs.readFile('src/templates/error.mustache', 'utf8')
+  if (!transfer) { // no transfer found
     ctx.response.status = 404
-    errors.push({ non_field_errors: "The transfer you are looking for could not be retrieved." })
-    ctx.body = { errors: errors }
+    //ctx.body = await fs.readFile('src/templates/404.html', 'utf8')
+    ctx.body = await Mustache.render(errorTemplate, {
+      status_code: 404,
+      title: "Transfert introuvable",
+      message: "Désolé, il semble que le transfert demandé ne puisse être retrouvé…",
+    })
     return
   }
 
-  ctx.body = {
-    uuid: ctx.params.uuid, // can be recipient or transfer uuid 
-    email: transfer.email, // sender email (to display on page)
-    size: transfer.archive_size,
+  if ((recipient && !recipient.active) || !transfer.active) { // inactive transfer or recipient 
+    ctx.response.status = 410
+    //ctx.body = await fs.readFile('src/templates/inactive.html', 'utf8')
+    ctx.body = await Mustache.render(errorTemplate, {
+      title: "Tranfer expiré",
+      message: "Désolé, il semble que le transfert demandé ait expiré et ne soit plus disponible…",
+    })
+    return
+  }
+
+  /* for testing purposes 
+  let transfer = {
+    object: "Photos de notre dernière séance",
+
+    message: "Bonjour,\n tu trouveras via le lien de téléchargement ci-dessous les photos de notre dernière séance.\n\nBien à toi,\n\nFrédéric",
+    original_filename: "mon_fichier.zip",
+    archive_size: 667890,
+  }
+  let uuid = "test"
+  */
+
+  const template = await fs.readFile('src/templates/transfer.mustache', 'utf8')
+  ctx.body = Mustache.render(template, {
     object: transfer.object,
     message: transfer.message,
-  }
+    filename: transfer.original_filename,
+    filesize: humanSize(transfer.archive_size),
+    link: `/stream/${ctx.params.uuid}`,
+  })
 }
 
 
-async function stream(ctx) {
+async function streamTransfer(ctx) {
   let errors = []
   const [recipient, transfer] = await getRecipientAndTransferByUUID(ctx.params.uuid)
 
@@ -340,8 +369,8 @@ module.exports = {
   createRecipient,
   updateRecipient,
   listDropbox,
-  getDownload,
-  stream,
+  getTransferHtml,
+  streamTransfer,
 }
 
 

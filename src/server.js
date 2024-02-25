@@ -1,6 +1,9 @@
 const Koa = require('koa')
 const { koaBody } = require('koa-body')
+const helmet = require('koa-helmet')
 const Router = require('koa-router')
+const serve = require('koa-static')
+const cors = require('@koa/cors')
 
 const ctrl = require('./controllers')
 
@@ -9,6 +12,21 @@ const ctrl = require('./controllers')
 
 const app = new Koa()
 const router = new Router()
+
+// Add some security headers
+if (process.env.NODE_ENV === 'production') {
+  app.use(helmet())
+}
+
+if (process.env.NODE_ENV !== 'production') {
+  // allow cors for development
+  app.use(cors())
+
+  // serve static files for development
+  app.use(serve('./src'))
+}
+
+
 
 app.use(koaBody())
 
@@ -50,11 +68,11 @@ router.put('/api/recipients/:uuid', ctrl.updateRecipient)
 // List dropbox content
 router.get('/api/listdropbox', ctrl.listDropbox)
 
-// Download (from recipient or transfer uuid) public data
-router.get('/api/downloads/:uuid', ctrl.getDownload)
+// Download (from recipient or transfer uuid) public
+router.get('/downloads/:uuid', ctrl.getTransferHtml)
 
-// Stream zip archive (from recipient or transfer uuid) public data
-router.get('/api/stream/:uuid', ctrl.stream)
+// Stream zip archive (from recipient or transfer uuid) public
+router.get('/stream/:uuid', ctrl.streamTransfer)
 
 // Use the routes
 app.use(router.routes())
