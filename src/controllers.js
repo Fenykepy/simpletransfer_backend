@@ -259,7 +259,6 @@ async function getTransferHtml(ctx) {
   const errorTemplate = await fs.readFile('src/templates/error.mustache', 'utf8')
   if (!transfer) { // no transfer found
     ctx.response.status = 404
-    //ctx.body = await fs.readFile('src/templates/404.html', 'utf8')
     ctx.body = await Mustache.render(errorTemplate, {
       status_code: 404,
       title: "Transfert introuvable",
@@ -270,7 +269,6 @@ async function getTransferHtml(ctx) {
 
   if ((recipient && !recipient.active) || !transfer.active) { // inactive transfer or recipient 
     ctx.response.status = 410
-    //ctx.body = await fs.readFile('src/templates/inactive.html', 'utf8')
     ctx.body = await Mustache.render(errorTemplate, {
       title: "Tranfer expiré",
       message: "Désolé, il semble que le transfert demandé ait expiré et ne soit plus disponible…",
